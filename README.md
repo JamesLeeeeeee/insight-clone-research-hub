@@ -1,60 +1,109 @@
+# 프로젝트 정보
 
+이 프로젝트는 React와 TypeScript를 사용한 웹 애플리케이션입니다.
 
+## 코드 편집 방법
 
+### 로컬 환경에서 개발하기
 
-## Project info
+로컬에서 개발하려면 Node.js와 npm이 설치되어 있어야 합니다.
 
-**URL**: https://lovable.dev/projects/a9ba17e3-7f62-440b-b913-68017daa4089
+### Node.js & npm 설치하기
 
-## How can I edit this code?
+#### Mac에서 설치
 
-There are several ways of editing your application.
+**방법 1: Homebrew 사용 (권장)**
+1. Homebrew가 없다면 먼저 설치:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+2. Node.js 설치 (npm 포함):
+```bash
+brew install node
+```
 
-**Use Lovable**
+**방법 2: nvm 사용**
+1. nvm 설치:
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+```
+2. 터미널 재시작 또는 다음 명령어 실행:
+```bash
+source ~/.bashrc
+```
+3. 최신 LTS 버전 Node.js 설치:
+```bash
+nvm install --lts
+nvm use --lts
+```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a9ba17e3-7f62-440b-b913-68017daa4089) and start prompting.
+#### Windows에서 설치
 
-Changes made via Lovable will be committed automatically to this repo.
+**방법 1: 공식 웹사이트에서 설치 (권장)**
+1. [Node.js 공식 웹사이트](https://nodejs.org/)에서 LTS 버전 다운로드
+2. 다운로드한 `.msi` 파일 실행하여 설치
 
-**Use your preferred IDE**
+**방법 2: Chocolatey 사용**
+1. PowerShell을 관리자 권한으로 실행
+2. Chocolatey가 없다면 먼저 설치:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+```
+3. Node.js 설치:
+```powershell
+choco install nodejs
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+**방법 3: nvm-windows 사용**
+1. [nvm-windows 릴리즈 페이지](https://github.com/coreybutler/nvm-windows/releases)에서 `nvm-setup.zip` 다운로드
+2. 압축 해제 후 `nvm-setup.exe` 실행
+3. 명령 프롬프트에서 최신 LTS 버전 설치:
+```cmd
+nvm install lts
+nvm use lts
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**설치 확인:**
+```bash
+node --version
+npm --version
+```
 
-Follow these steps:
+### 개발 시작하기
+
+다음 단계를 따라하세요:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# 1단계: 저장소 클론
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# 2단계: 프로젝트 디렉토리로 이동
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
+# 3단계: 의존성 설치
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4단계: 개발 서버 시작
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### GitHub에서 직접 편집하기
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- 편집하고 싶은 파일로 이동
+- 파일 우측 상단의 "Edit" 버튼(연필 아이콘) 클릭
+- 변경사항 작성 후 커밋
 
-**Use GitHub Codespaces**
+### GitHub Codespaces 사용하기
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- 저장소 메인 페이지로 이동
+- 우측 상단의 "Code" 버튼(초록색) 클릭
+- "Codespaces" 탭 선택
+- "New codespace"를 클릭하여 새로운 Codespace 환경 실행
+- Codespace에서 직접 파일을 편집하고 완료되면 변경사항을 커밋 및 푸시
 
-## What technologies are used for this project?
+## 사용된 기술
 
-This project is built with:
+이 프로젝트는 다음 기술들로 구축되었습니다:
 
 - Vite
 - TypeScript
@@ -62,14 +111,12 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## 프로젝트 배포
 
-Simply open [Lovable](https://lovable.dev/projects/a9ba17e3-7f62-440b-b913-68017daa4089) and click on Share -> Publish.
+프로젝트를 배포하려면 다음 명령어를 사용하세요:
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+npm run build
+```
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+빌드된 파일은 `dist` 폴더에 생성됩니다.
