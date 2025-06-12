@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ResearchData, CloneProfile } from '@/types/research';
+import { researchAPI } from '@/lib/api';
 
 interface ResearchSetupProps {
   onComplete: (data: ResearchData, clones: CloneProfile[]) => void;
@@ -63,9 +64,46 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const generateClones = () => {
-    // In real implementation, this would call an AI service to generate appropriate clones
-    setGeneratedClones(mockClones);
+  const generateClones = async () => {
+    if (!formData.product || !formData.targetAudience) {
+      alert('제품명과 대상자는 필수 입력 항목입니다.');
+      return;
+    }
+
+    try {
+      const apiData = {
+        product_name: formData.product,
+        target_audience: formData.targetAudience,
+        age_range: formData.ageRange,
+        gender: formData.gender,
+        occupation: formData.occupation,
+        additional_context: formData.additionalContext
+      };
+
+      const response = await researchAPI.setupResearch(apiData);
+      
+      if (response.status === 'success' && response.recommended_clones) {
+        const clones = response.recommended_clones.map((clone: any) => ({
+          id: clone.clone_id,
+          name: clone.name,
+          age: clone.age,
+          gender: clone.gender,
+          occupation: clone.occupation,
+          personality: clone.personality || '전문적이고 통찰력 있는 성격',
+          avatar: clone.occupation.includes('디자이너') ? '👩‍💻' : 
+                  clone.occupation.includes('개발자') ? '👨‍💻' : '👤',
+          background: clone.background || `${clone.occupation}로 활동 중`
+        }));
+        
+        setGeneratedClones(clones);
+      } else {
+        setGeneratedClones(mockClones);
+      }
+    } catch (error) {
+      console.error('API 호출 실패, 더미 데이터 사용:', error);
+      setGeneratedClones(mockClones);
+    }
+    
     setShowClones(true);
   };
 
