@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ResearchData, CloneProfile } from '@/types/research';
 import { researchAPI } from '@/lib/api';
+import { get } from 'http';
 
 interface ResearchSetupProps {
   onComplete: (data: ResearchData, clones: CloneProfile[]) => void;
@@ -81,30 +82,47 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
       };
 
       const response = await researchAPI.setupResearch(apiData);
-      
+      console.log("API 응답:", response);
+
       if (response.status === 'success' && response.recommended_clones) {
         const clones = response.recommended_clones.map((clone: any) => ({
           id: clone.clone_id,
           name: clone.name,
           age: clone.age,
           gender: clone.gender,
-          occupation: clone.occupation,
-          personality: clone.personality || '전문적이고 통찰력 있는 성격',
-          avatar: clone.occupation.includes('디자이너') ? '👩‍💻' : 
-                  clone.occupation.includes('개발자') ? '👨‍💻' : '👤',
-          background: clone.background || `${clone.occupation}로 활동 중`
+          occupation: clone.job_title || clone.occupation,
+          personality: clone.personality,
+          avatar: getAvatarForClone(clone),
+          background: clone.background || `${clone.job_title || clone.occupation}로 활동 중`
         }));
         
+        console.log("변환된 클론 데이터:", clones);
         setGeneratedClones(clones);
       } else {
+        console.log("API 응답 실패, 목업 데이터 사용");
         setGeneratedClones(mockClones);
       }
-    } catch (error) {
+    }  catch (error) {
       console.error('API 호출 실패, 더미 데이터 사용:', error);
       setGeneratedClones(mockClones);
     }
     
     setShowClones(true);
+  };
+
+
+    // 아바타 선택 함수 추가
+  const getAvatarForClone = (clone: any) => {
+    const jobTitle = ((clone.job_title || clone.occupation) || '').toLowerCase();
+    
+    if (jobTitle.includes('디자이너') || jobTitle.includes('디자인')) return '👩‍💻';
+    if (jobTitle.includes('개발자') || jobTitle.includes('프로그래머') || jobTitle.includes('엔지니어')) return '👨‍💻';
+    if (jobTitle.includes('선생님') || jobTitle.includes('교사') || jobTitle.includes('강사')) return '👩‍🏫';
+    if (jobTitle.includes('학생') || jobTitle.includes('과정생')) return '👨‍🎓';
+    if (jobTitle.includes('매니저') || jobTitle.includes('기획자')) return '👩‍💼';
+    
+    // 성별에 따른 기본 아바타
+    return clone.gender.includes('여성') ? '👩' : '👨';
   };
 
   const handleSubmit = () => {
