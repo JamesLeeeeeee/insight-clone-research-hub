@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import ResearchSetup from '@/components/ResearchSetup';
@@ -12,26 +11,34 @@ const Index = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [researchData, setResearchData] = useState<ResearchData | null>(null);
   const [selectedClones, setSelectedClones] = useState<CloneProfile[]>([]);
-  const [responses, setResponses] = useState<any[]>([]);
+  const [researchId, setResearchId] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const progress = (currentStep / 4) * 100;
 
-  const handleResearchSetup = (data: ResearchData, clones: CloneProfile[]) => {
+  const handleResearchSetup = (data: ResearchData, clones: CloneProfile[], id: string) => {
     setResearchData(data);
     setSelectedClones(clones);
+    setResearchId(id);
     setCurrentStep(2);
   };
 
-  const handleQuestionsComplete = (questionResponses: any[]) => {
-    setResponses(questionResponses);
+  // 👈 질문 제출이 완료되면 3단계로 넘어갑니다.
+  const handleQuestionsComplete = () => {
     setCurrentStep(3);
+    // 5초 후에 자동으로 4단계로 넘어가도록 설정 (실제로는 상태 폴링 필요)
+    setTimeout(() => {
+      setIsAnalyzing(true);
+      setCurrentStep(4);
+    }, 5000);
   };
 
   const resetResearch = () => {
     setCurrentStep(1);
     setResearchData(null);
     setSelectedClones([]);
-    setResponses([]);
+    setResearchId(null);
+    setIsAnalyzing(false);
   };
 
   return (
@@ -69,11 +76,12 @@ const Index = () => {
           <ResearchSetup onComplete={handleResearchSetup} />
         )}
 
-        {currentStep === 2 && researchData && (
+        {currentStep === 2 && researchData && researchId && (
           <QuestionInterface 
             researchData={researchData}
             selectedClones={selectedClones}
-            onComplete={handleQuestionsComplete}
+            researchId={researchId} // 👈 researchId를 전달합니다.
+            onComplete={handleQuestionsComplete} // 👈 새로운 핸들러를 전달합니다.
           />
         )}
 
@@ -81,21 +89,15 @@ const Index = () => {
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <h3 className="text-xl font-semibold text-gray-800 mb-2">AI 클론들이 응답 중입니다...</h3>
-            <p className="text-gray-600">잠시만 기다려주세요</p>
-            <Button 
-              onClick={() => setCurrentStep(4)} 
-              className="mt-4"
-              variant="outline"
-            >
-              결과 보기 (임시)
-            </Button>
+            <p className="text-gray-600">잠시만 기다려주세요. 약 1~2분 소요될 수 있습니다.</p>
           </div>
         )}
 
         {currentStep === 4 && (
           <InsightSummary 
             researchData={researchData}
-            responses={responses}
+            researchId={researchId}
+            selectedClones={selectedClones} 
             onReset={resetResearch}
           />
         )}

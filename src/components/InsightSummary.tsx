@@ -1,77 +1,98 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Download, RefreshCw } from 'lucide-react';
-import { ResearchData } from '@/types/research';
+import { Download, RefreshCw, AlertTriangle, BrainCircuit } from 'lucide-react';
+import { ResearchData, CloneProfile } from '@/types/research';
+import { insightsAPI } from '@/lib/api';
+import { Insight } from '@/types/insights';
 
 interface InsightSummaryProps {
   researchData: ResearchData | null;
-  responses: any[];
+  researchId: string | null; // 👈 상위 컴포넌트에서 이 ID를 받습니다.
+  selectedClones: CloneProfile[];
   onReset: () => void;
 }
 
 const InsightSummary: React.FC<InsightSummaryProps> = ({ 
   researchData, 
-  responses, 
+  researchId, // 👈 props로 받은 ID
+  selectedClones,
   onReset 
 }) => {
-  // Mock data for demonstration
-  const mockResponses = [
-    {
-      question: "YouTube를 사용할 때 가장 불편한 점은 무엇인가요?",
-      responses: [
-        { clone: "김민지", answer: "광고가 너무 많아서 집중력이 떨어져요. 특히 중간에 나오는 광고들이 영상 몰입을 방해합니다." },
-        { clone: "박준호", answer: "모바일에서 백그라운드 재생이 안 되는 점이 아쉽습니다. 음악을 들으면서 다른 앱을 사용하고 싶어요." },
-        { clone: "이수진", answer: "추천 알고리즘이 때로는 너무 편향적이에요. 같은 종류의 콘텐츠만 계속 추천해주는 경우가 많습니다." }
-      ]
-    },
-    {
-      question: "YouTube를 개선한다면 어떤 부분을 바꾸고 싶나요?",
-      responses: [
-        { clone: "김민지", answer: "UI/UX 측면에서 더 직관적인 탐색 기능이 있었으면 좋겠어요. 카테고리별로 더 쉽게 찾을 수 있도록요." },
-        { clone: "박준호", answer: "개발자 입장에서 API 연동이나 임베드 기능을 더 개선했으면 합니다. 더 유연한 커스터마이징이 가능했으면요." },
-        { clone: "이수진", answer: "사용자 행동 분석을 통해 더 개인화된 콘텐츠 큐레이션 기능이 있었으면 좋겠습니다." }
-      ]
-    }
-  ];
+  const [insights, setInsights] = useState<Insight | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const insights = [
-    {
-      title: "주요 불편사항",
-      content: "광고 과다, 백그라운드 재생 제한, 편향적 추천 알고리즘이 주요 문제점으로 지적됨",
-      type: "problem"
-    },
-    {
-      title: "개선 요구사항",
-      content: "UI/UX 개선, 개발자 친화적 기능, 개인화 강화에 대한 니즈가 높음",
-      type: "opportunity"
-    },
-    {
-      title: "사용자 페르소나별 차이점",
-      content: "디자이너는 UI/UX, 개발자는 기술적 기능, PM은 데이터 분석에 더 관심을 보임",
-      type: "insight"
-    }
-  ];
+  useEffect(() => {
+    // researchData.id 대신 researchId를 사용합니다.
+    if (researchId) {
+      const fetchInsights = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          // researchData.id 대신 researchId를 사용합니다. (숫자로 변환)
+          const analysisResult = await insightsAPI.analyze(Number(researchId));
+          setInsights(analysisResult);
+        } catch (err) {
+          setError('인사이트를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-  const exportData = () => {
-    const exportContent = {
-      researchData,
-      responses: mockResponses,
-      insights,
-      timestamp: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(exportContent, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `research-results-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      fetchInsights();
+    } else {
+      // researchId가 없는 경우 로딩을 멈추고 에러 메시지를 표시합니다.
+      setLoading(false);
+      setError("연구 ID가 없어 분석을 시작할 수 없습니다.");
+    }
+  }, [researchId]); // 의존성 배열에도 researchId를 사용합니다.
+
+  const handleDownload = (format: 'pdf' | 'json') => {
+    // researchData.id 대신 researchId를 사용합니다.
+    if (researchId) {
+      insightsAPI.download(Number(researchId), format).catch(err => {
+        console.error('다운로드 실패:', err);
+        alert(`${format.toUpperCase()} 파일 다운로드에 실패했습니다.`);
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 text-center">
+        <BrainCircuit className="h-12 w-12 mb-4 animate-pulse text-blue-500" />
+        <p className="text-lg font-semibold">📊 AI가 인사이트를 분석하고 있습니다...</p>
+        <p className="text-sm text-gray-500">잠시만 기다려주세요. 클론들의 답변을 종합하여 핵심을 도출하고 있습니다.</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 text-center text-red-600">
+        <AlertTriangle className="h-12 w-12 mb-4" />
+        <p className="text-lg font-semibold">{error}</p>
+        <Button onClick={onReset} className="mt-4">
+          연구 다시 시작하기
+        </Button>
+      </div>
+    );
+  }
+
+  if (!insights) {
+    return (
+      <div className="text-center p-10">
+        <p>분석된 인사이트가 없습니다.</p>
+        <Button onClick={onReset} className="mt-4">
+          연구 다시 시작하기
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -82,9 +103,28 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
             📊 연구 결과 및 인사이트
           </CardTitle>
           <CardDescription>
-            AI 클론들의 응답을 바탕으로 생성된 인사이트입니다
+            {insights.summary || "AI 클론들의 응답을 바탕으로 생성된 종합적인 인사이트입니다."}
           </CardDescription>
         </CardHeader>
+      </Card>
+
+      {/* 키 테마 섹션 추가 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>🔑 주요 테마</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {(insights.key_themes || []).map((theme, index) => (
+              <Badge key={index} variant="secondary" className="text-sm py-1">
+                {theme}
+              </Badge>
+            ))}
+            {(!insights.key_themes || insights.key_themes.length === 0) && (
+              <p className="text-gray-500">추출된 주요 테마가 없습니다.</p>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Key Insights */}
@@ -94,53 +134,82 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {insights.map((insight, index) => (
-              <div key={index} className="p-4 border rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={
-                    insight.type === 'problem' ? 'destructive' : 
-                    insight.type === 'opportunity' ? 'default' : 'secondary'
-                  }>
-                    {insight.type === 'problem' ? '문제점' : 
-                     insight.type === 'opportunity' ? '기회요소' : '인사이트'}
-                  </Badge>
-                  <h4 className="font-semibold">{insight.title}</h4>
+            {/* 방어적 프로그래밍: insights.insights가 없으면 빈 배열 사용 */}
+            {(insights.insights || []).map((insight, index) => (
+              <div key={index} className="p-4 border rounded-lg bg-gray-50">
+                <h4 className="font-semibold text-base mb-2">{insight.title}</h4>
+                <p className="text-gray-700 text-sm mb-3">{insight.description}</p>
+                <div className="text-xs text-gray-500">
+                  <strong>관련 응답:</strong> {(insight.supporting_evidence || []).join(', ')}
                 </div>
-                <p className="text-gray-700">{insight.content}</p>
               </div>
             ))}
+            {/* insights.insights가 없거나 빈 배열인 경우 메시지 표시 */}
+            {(!insights.insights || insights.insights.length === 0) && (
+              <div className="p-4 border rounded-lg bg-gray-50 text-center">
+                <p className="text-gray-700">분석된 인사이트가 없습니다.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Detailed Responses */}
+      {/* 다음 스텝  */}
       <Card>
         <CardHeader>
-          <CardTitle>💬 상세 응답 내용</CardTitle>
+          <CardTitle>🛼 다음 스텝</CardTitle>
+          <CardDescription>
+            연구 결과를 바탕으로 권장되는 다음 액션 아이템
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {mockResponses.map((item, qIndex) => (
-              <div key={qIndex}>
-                <h4 className="font-semibold text-lg mb-3 text-blue-700">
-                  Q{qIndex + 1}. {item.question}
-                </h4>
-                <div className="space-y-3">
-                  {item.responses.map((response, rIndex) => (
-                    <div key={rIndex} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline">{response.clone}</Badge>
-                      </div>
-                      <p className="text-gray-700">{response.answer}</p>
-                    </div>
-                  ))}
-                </div>
-                {qIndex < mockResponses.length - 1 && <Separator className="mt-6" />}
+          <div className="space-y-4">
+            {insights.recommendations && insights.recommendations.length > 0 ? (
+              <div className="space-y-3">
+                {insights.recommendations.map((rec, index) => (
+                  <div key={index} className="p-3 border-l-4 border-blue-400 bg-blue-50">
+                    <h4 className="font-medium mb-1">{rec.action}</h4>
+                    <p className="text-sm text-gray-600">{rec.rationale}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="p-4 border rounded-lg bg-gray-50 text-center">
+                <p className="text-gray-700">권장 액션 아이템이 없습니다.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+
+      {/* 통계 정보 섹션 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold">{insights.insights?.length || 0}</p>
+              <p className="text-sm text-gray-500">인사이트 수</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold">{insights.key_themes?.length || 0}</p>
+              <p className="text-sm text-gray-500">주요 테마</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold">{insights.recommendations?.length || 0}</p>
+              <p className="text-sm text-gray-500">권장 사항</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Research Summary */}
       <Card>
@@ -148,32 +217,38 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           <CardTitle>📋 연구 요약</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <h5 className="font-medium mb-2">연구 대상</h5>
-              <p className="text-gray-600">{researchData?.product}</p>
+              <h5 className="font-medium mb-1 text-gray-500">연구 대상</h5>
+              <p className="text-gray-800">{researchData?.product}</p>
             </div>
             <div>
-              <h5 className="font-medium mb-2">타겟 사용자</h5>
-              <p className="text-gray-600">{researchData?.targetAudience}</p>
+              <h5 className="font-medium mb-1 text-gray-500">타겟 사용자</h5>
+              <p className="text-gray-800">{researchData?.targetAudience}</p>
             </div>
             <div>
-              <h5 className="font-medium mb-2">연령대</h5>
-              <p className="text-gray-600">{researchData?.ageRange || '전체'}</p>
+              <h5 className="font-medium mb-1 text-gray-500">연령대</h5>
+              <p className="text-gray-800">{researchData?.ageRange || '전체'}</p>
             </div>
             <div>
-              <h5 className="font-medium mb-2">응답자 수</h5>
-              <p className="text-gray-600">3명의 AI 클론</p>
-            </div>
+              <h5 className="font-medium mb-1 text-gray-500">응답자 수</h5>
+              <p className="text-gray-800">
+                {selectedClones.length}명의 AI 클론
+              </p>            
+              </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex justify-center gap-4">
-        <Button onClick={exportData} variant="outline" className="flex items-center gap-2">
+      <div className="flex justify-center gap-4 pt-4">
+        <Button onClick={() => handleDownload('json')} variant="outline" className="flex items-center gap-2">
           <Download className="h-4 w-4" />
-          결과 다운로드
+          JSON 다운로드
+        </Button>
+        <Button onClick={() => handleDownload('pdf')} variant="outline" className="flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          PDF 다운로드
         </Button>
         <Button onClick={onReset} className="flex items-center gap-2">
           <RefreshCw className="h-4 w-4" />
