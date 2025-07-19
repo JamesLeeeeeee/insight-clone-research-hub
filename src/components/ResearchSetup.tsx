@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,16 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
   const [showClones, setShowClones] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [researchId, setResearchId] = useState<string | null>(null);
+
+  const clonesRef = useRef<HTMLDivElement>(null);
+
+  // 스크롤 다운 효과
+  useEffect(() => {
+    if (showClones && clonesRef.current) {
+      clonesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showClones]);
+
 
   const handleInputChange = (field: keyof ResearchData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -79,7 +89,6 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
     }
   };
 
-  // 👈 "박준영"이 여자로 나오던 문제를 해결하는 핵심 로직입니다.
   const getAvatarForClone = (clone: any) => {
     const jobTitle = (clone.occupation || '').toLowerCase();
     const isMale = clone.gender === 'male';
@@ -199,7 +208,7 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
       </Card>
 
       {showClones && (
-        <Card>
+        <Card ref={clonesRef}>
           <CardHeader>
             <CardTitle>추천된 AI 클론</CardTitle>
             <CardDescription>

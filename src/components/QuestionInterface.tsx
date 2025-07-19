@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,84 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
   const [suggestionQuestions, setSuggestionQuestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false); // 👈 제출 중 상태 추가
+
+  // 프로그래스 상태 관리를 위한 state 추가
+  const [progressStage, setProgressStage] = useState(1);
+  const [progressPercent, setProgressPercent] = useState({
+    stage1: 0,
+    stage2: 0,
+    stage3: 0
+  });
+  
+  const loadingRef = useRef<HTMLDivElement>(null);
+
+
+  
+  useEffect(() => {
+    if (isSubmitting) {
+      let interval: NodeJS.Timeout;
+      
+      // 단계별 진행률 업데이트
+      if (progressStage === 1) {
+        // 1단계: 0%에서 100%로 부드럽게 증가
+        let percent = 0;
+        interval = setInterval(() => {
+          percent += 4; // 빠르게 증가
+          if (percent >= 100) {
+            clearInterval(interval);
+            percent = 100;
+          }
+          setProgressPercent(prev => ({ ...prev, stage1: percent }));
+        }, 50);
+      } 
+      else if (progressStage === 2) {
+        // 2단계: 0%에서 100%로 부드럽게 증가
+        let percent = 0;
+        interval = setInterval(() => {
+          percent += 2; // 1단계보다 느리게
+          if (percent >= 100) {
+            clearInterval(interval);
+            percent = 100;
+          }
+          setProgressPercent(prev => ({ ...prev, stage1: 100, stage2: percent }));
+        }, 50);
+      }
+      else if (progressStage === 3) {
+        // 3단계: 0%에서 95%까지만 증가 (API 응답 대기 상태 표현)
+        let percent = 0;
+        interval = setInterval(() => {
+          percent += 1; // 가장 느리게
+          if (percent >= 95) {
+            clearInterval(interval);
+            percent = 95;
+          }
+          setProgressPercent(prev => ({ 
+            ...prev, 
+            stage1: 100, 
+            stage2: 100, 
+            stage3: percent 
+          }));
+        }, 50);
+      }
+      
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+  }, [isSubmitting, progressStage]);
+
+  useEffect(() => {
+    if (isSubmitting && loadingRef.current) {
+      // 로딩 UI가 표시된 후 약간의 지연을 두고 스크롤 실행
+      setTimeout(() => {
+        loadingRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 100);
+    }
+  }, [isSubmitting]);
+  
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -75,7 +153,7 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
     const validQuestions = questions
       .map(q => ({ text: q.text.trim() }))
       .filter(q => q.text !== '');
-
+  
     if (validQuestions.length === 0) {
       alert('최소 하나의 질문을 입력해주세요.');
       return;
@@ -83,9 +161,33 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
     
     setIsSubmitting(true);
     try {
-      // researchId와 질문 목록을 백엔드로 전송합니다.
-      await questionsAPI.submitQuestions(researchId, validQuestions);
-      onComplete(); // 성공 시 다음 단계로 이동
+      // API 호출을 먼저 진행하되 결과를 저장해둡니다
+      const apiPromise = questionsAPI.submitQuestions(researchId, validQuestions);
+      
+      // 최소 애니메이션 시간을 보장하기 위한 타이머
+      const animationPromise = new Promise(resolve => {
+        setTimeout(() => {
+          // 단계 1: 이미 시작됨
+          setTimeout(() => {
+            setProgressStage(2); // 단계 2로 진행
+            
+            setTimeout(() => {
+              setProgressStage(3); // 단계 3으로 진행
+              
+              // 마지막 단계 진행 후 일정 시간 대기
+              setTimeout(() => {
+                resolve(true);
+              }, 2000);
+            }, 2000);
+          }, 1000);
+        }, 0);
+      });
+      
+      // 두 작업이 모두 완료될 때까지 기다립니다
+      await Promise.all([apiPromise, animationPromise]);
+      
+      // 다음 단계로 진행
+      onComplete();
     } catch (error) {
       console.error("질문 제출 실패:", error);
       alert("질문 제출에 실패했습니다. 다시 시도해주세요.");
@@ -214,21 +316,113 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
         </CardContent>
       </Card>
 
-      {/* Submit Button */}
-      <div className="text-center">
-        <Button onClick={handleSubmit} size="lg" className="px-8" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              제출 중...
-            </>
-          ) : (
-            "AI 클론들에게 질문하기 🚀"
-          )}
-        </Button>
+  {/* Submit Button */}
+  <div className="text-center">
+    <Button onClick={handleSubmit} size="lg" className="px-8" disabled={isSubmitting}>
+      {isSubmitting ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          제출 중...
+        </>
+      ) : (
+        "AI 클론들에게 질문하기 🚀"
+      )}
+    </Button>
+  
+    {isSubmitting && (
+      <div ref={loadingRef} className="mt-6 bg-blue-50 rounded-lg p-6 text-left">
+        <div className="flex items-center mb-4">
+          <div className="relative">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-semibold text-blue-800">AI</span>
+            </div>
+          </div>
+          <div className="ml-4">
+            <h3 className="text-lg font-semibold text-blue-800">
+              {progressStage === 1 ? "질문 전송 중..." : 
+               progressStage === 2 ? "AI 클론들이 분석 중..." : 
+               "답변 생성 중..."}
+            </h3>
+            <div className="mt-1 flex space-x-1">
+              <span className="text-sm text-blue-600">
+                {progressStage}/3 단계 진행 중
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="flex items-center">
+            <div className="w-1/4 font-medium text-blue-800">단계 1/3</div>
+            <div className="w-3/4">
+              <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 rounded-full transition-all duration-300" 
+                  style={{width: `${progressPercent.stage1}%`}}
+                ></div>
+              </div>
+              <p className="text-sm mt-1 text-blue-700">
+                {progressPercent.stage1 === 100 ? 
+                  "✓ 질문 전송 완료" : "질문 전송 중..."}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center">
+            <div className="w-1/4 font-medium text-blue-800">단계 2/3</div>
+            <div className="w-3/4">
+              <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    progressStage >= 2 ? "bg-blue-500" : "bg-blue-200"
+                  }`} 
+                  style={{
+                    width: `${progressPercent.stage2}%`,
+                    opacity: progressStage >= 2 ? 1 : 0.5
+                  }}
+                ></div>
+              </div>
+              <p className="text-sm mt-1" 
+                style={{color: progressStage >= 2 ? "#1D4ED8" : "#94A3B8"}}>
+                {progressStage < 2 ? "대기 중..." : 
+                 progressPercent.stage2 === 100 ? "✓ 분석 완료" : 
+                 "AI 클론들이 질문을 분석 중..."}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center">
+            <div className="w-1/4 font-medium text-blue-800">단계 3/3</div>
+            <div className="w-3/4">
+              <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    progressStage >= 3 ? "bg-blue-500" : "bg-blue-200"
+                  }`}
+                  style={{
+                    width: `${progressPercent.stage3}%`,
+                    opacity: progressStage >= 3 ? 1 : 0.5
+                  }}
+                ></div>
+              </div>
+              <p className="text-sm mt-1"
+                style={{color: progressStage >= 3 ? "#1D4ED8" : "#94A3B8"}}>
+                {progressStage < 3 ? "대기 중..." : "답변 생성 중..."}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 text-sm text-blue-600 bg-blue-100 p-3 rounded">
+          <p className="font-medium">💡 AI 처리 시간은 질문 복잡도에 따라 다를 수 있습니다.</p>
+          <p className="mt-1">평균 처리 시간: 1-3분</p>
+        </div>
       </div>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default QuestionInterface;
