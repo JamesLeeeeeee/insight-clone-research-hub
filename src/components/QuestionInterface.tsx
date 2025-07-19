@@ -93,6 +93,7 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
     }
   }, [isSubmitting, progressStage]);
 
+  // 스크롤바 다우닝 효과
   useEffect(() => {
     if (isSubmitting && loadingRef.current) {
       // 로딩 UI가 표시된 후 약간의 지연을 두고 스크롤 실행
