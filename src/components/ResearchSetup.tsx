@@ -69,7 +69,7 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
           gender: clone.gender,
           occupation: clone.occupation,
           personality: clone.personality,
-          avatar: getAvatarForClone(clone), // 👈 수정된 아바타 함수가 여기서 사용됩니다.
+          avatar: getAvatarForClone(clone), 
           background: clone.background
         }));
         
@@ -132,6 +132,7 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
                 placeholder="예: YouTube, Instagram, Notion"
                 value={formData.product}
                 onChange={(e) => handleInputChange('product', e.target.value)}
+                
               />
             </div>
             <div>
