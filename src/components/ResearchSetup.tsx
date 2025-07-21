@@ -120,16 +120,16 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
             📋 연구 설정
           </CardTitle>
           <CardDescription>
-            테스트하고자 하는 제품과 대상자 정보를 입력해주세요
+            테스트하고자 하는 서비스와 대상자 정보를 입력해주세요
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="product">제품명 *</Label>
+              <Label htmlFor="product">서비스명 *</Label>
               <Input
                 id="product"
-                placeholder="예: YouTube, Instagram, Notion"
+                placeholder="예: 서비스 도메인(예 : 컨텐츠 플랫폼)"
                 value={formData.product}
                 onChange={(e) => handleInputChange('product', e.target.value)}
                 
@@ -139,7 +139,7 @@ const ResearchSetup: React.FC<ResearchSetupProps> = ({ onComplete }) => {
               <Label htmlFor="targetAudience">대상자 *</Label>
               <Input
                 id="targetAudience"
-                placeholder="예: 소셜미디어 사용자, 학생, 직장인"
+                placeholder="예: 컨텐츠 사용자, 학생, 직장인"
                 value={formData.targetAudience}
                 onChange={(e) => handleInputChange('targetAudience', e.target.value)}
               />

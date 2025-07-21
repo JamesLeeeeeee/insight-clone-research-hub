@@ -10,14 +10,14 @@ import { Insight } from '@/types/insights';
 
 interface InsightSummaryProps {
   researchData: ResearchData | null;
-  researchId: string | null; // 👈 상위 컴포넌트에서 이 ID를 받습니다.
+  researchId: string | null;
   selectedClones: CloneProfile[];
   onReset: () => void;
 }
 
 const InsightSummary: React.FC<InsightSummaryProps> = ({ 
   researchData, 
-  researchId, // 👈 props로 받은 ID
+  researchId,
   selectedClones,
   onReset 
 }) => {
