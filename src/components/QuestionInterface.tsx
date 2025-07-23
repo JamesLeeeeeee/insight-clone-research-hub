@@ -10,8 +10,8 @@ import { questionsAPI } from '@/lib/api';
 interface QuestionInterfaceProps {
   researchData: ResearchData;
   selectedClones: CloneProfile[];
-  researchId: string; // 👈 researchId를 props로 받습니다.
-  onComplete: () => void; // 👈 onComplete는 이제 인자를 받지 않습니다.
+  researchId: string; 
+  onComplete: () => void;
 }
 
 const QuestionInterface: React.FC<QuestionInterfaceProps> = ({ 
@@ -26,7 +26,7 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
   
   const [suggestionQuestions, setSuggestionQuestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false); // 👈 제출 중 상태 추가
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 프로그래스 상태 관리를 위한 state 추가
   const [progressStage, setProgressStage] = useState(1);
@@ -416,8 +416,8 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
         </div>
         
         <div className="mt-4 text-sm text-blue-600 bg-blue-100 p-3 rounded">
-          <p className="font-medium">💡 AI 처리 시간은 질문 복잡도에 따라 다를 수 있습니다.</p>
-          <p className="mt-1">평균 처리 시간: 1-3분</p>
+          <p className="font-medium">💡 AI 처리 시간은 질문 복잡도, 클론 수 그리고 질문 수 따라 다를 수 있습니다.</p>
+          <p className="mt-1">평균 처리 시간: 3-5분</p>
         </div>
       </div>
       )}

@@ -154,6 +154,50 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
         </CardContent>
       </Card>
 
+      {/* 질문과 클론 답변 섹션 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>💬 질문 및 클론 응답</CardTitle>
+          <CardDescription>
+            각 질문에 대한 AI 클론들의 자세한 응답
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {insights.detailed_responses && insights.detailed_responses.length > 0 ? (
+            <div className="space-y-6">
+              {insights.detailed_responses.map((item, qIndex) => (
+                <div key={qIndex} className="border rounded-lg overflow-hidden">
+                  <div className="bg-blue-50 p-4 border-b">
+                    <h4 className="font-medium text-blue-800">질문 {qIndex + 1}: {item.question_text}</h4>
+                  </div>
+                  <div className="divide-y">
+                    {item.responses.map((response, rIndex) => (
+                      <div key={rIndex} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-800">
+                            {response.clone_name?.charAt(0) || 'C'}
+                          </div>
+                          <div>
+                            <p className="font-medium">{response.clone_name || `클론 ${rIndex + 1}`}</p>
+                          </div>
+                        </div>
+                        <div className="pl-10">
+                          <p className="text-gray-700 whitespace-pre-wrap">{response.response}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center p-4 text-gray-500">
+              자세한 응답 데이터가 없습니다.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* 다음 스텝  */}
       <Card>
         <CardHeader>
