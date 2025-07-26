@@ -153,25 +153,27 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                 <div className="text-xs text-gray-500">
                   <strong>관련 응답:</strong>
                   {Array.isArray(insight.supporting_evidence) ? (
-                    <div className="mt-1">
-                      {insight.supporting_evidence.map((evidence, i) => {
-                        // 질문과 응답 구분
-                        const isQuestion = evidence.startsWith('질문:');
-                        return (
-                          <div 
-                            key={i} 
-                            className={`ml-2 pl-2 border-l-2 ${
-                              isQuestion ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
-                            } my-1 p-1 rounded-sm`}
-                          >
-                            {isQuestion ? <span className="font-medium">{evidence}</span> : evidence}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <span className="ml-1">{insight.supporting_evidence || "없음"}</span>
-                  )}
+                  <div className="mt-1">
+                    {insight.supporting_evidence.map((evidence, i) => {
+                      // Make sure evidence is a string before calling startsWith()
+                      const evidenceStr = typeof evidence === 'string' ? evidence : JSON.stringify(evidence);
+                      // 질문과 응답 구분
+                      const isQuestion = evidenceStr.startsWith('질문:');
+                      return (
+                        <div 
+                          key={i} 
+                          className={`ml-2 pl-2 border-l-2 ${
+                            isQuestion ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                          } my-1 p-1 rounded-sm`}
+                        >
+                          {isQuestion ? <span className="font-medium">{evidenceStr}</span> : evidenceStr}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <span className="ml-1">{insight.supporting_evidence || "없음"}</span>
+                )}
                 </div>
               </div>
             ))}
