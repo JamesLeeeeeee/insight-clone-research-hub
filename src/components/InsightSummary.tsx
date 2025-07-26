@@ -26,13 +26,11 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // researchData.id 대신 researchId를 사용합니다.
     if (researchId) {
       const fetchInsights = async () => {
         try {
           setLoading(true);
           setError(null);
-          // researchData.id 대신 researchId를 사용합니다. (숫자로 변환)
           const analysisResult = await insightsAPI.analyze(Number(researchId));
           setInsights(analysisResult);
         } catch (err) {
@@ -45,20 +43,33 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
 
       fetchInsights();
     } else {
-      // researchId가 없는 경우 로딩을 멈추고 에러 메시지를 표시합니다.
       setLoading(false);
       setError("연구 ID가 없어 분석을 시작할 수 없습니다.");
     }
-  }, [researchId]); // 의존성 배열에도 researchId를 사용합니다.
+  }, [researchId]);
 
   const handleDownload = (format: 'pdf' | 'json') => {
-    // researchData.id 대신 researchId를 사용합니다.
     if (researchId) {
       insightsAPI.download(Number(researchId), format).catch(err => {
         console.error('다운로드 실패:', err);
         alert(`${format.toUpperCase()} 파일 다운로드에 실패했습니다.`);
       });
     }
+  };
+
+  // 데이터 유효성 검사 및 안전한 처리를 위한 함수
+  const formatResponseData = (response: any) => {
+    let cloneName = '클론';
+    let responseText = '';
+    
+    if (typeof response === 'string') {
+      responseText = response;
+    } else if (response && typeof response === 'object') {
+      cloneName = response.clone_name || response.name || '클론';
+      responseText = response.response || response.text || JSON.stringify(response);
+    }
+    
+    return { cloneName, responseText };
   };
 
   if (loading) {
@@ -138,15 +149,25 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
               <div key={index} className="p-4 border rounded-lg bg-gray-50">
                 <h4 className="font-semibold text-base mb-2">{insight.title}</h4>
                 <p className="text-gray-700 text-sm mb-3">{insight.description}</p>
+                {/* 관련 응답 섹션 */}
                 <div className="text-xs text-gray-500">
                   <strong>관련 응답:</strong>
                   {Array.isArray(insight.supporting_evidence) ? (
                     <div className="mt-1">
-                      {insight.supporting_evidence.map((evidence, i) => (
-                        <div key={i} className="ml-2 pl-2 border-l-2 border-gray-200 my-1">
-                          {evidence}
-                        </div>
-                      ))}
+                      {insight.supporting_evidence.map((evidence, i) => {
+                        // 질문과 응답 구분
+                        const isQuestion = evidence.startsWith('질문:');
+                        return (
+                          <div 
+                            key={i} 
+                            className={`ml-2 pl-2 border-l-2 ${
+                              isQuestion ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                            } my-1 p-1 rounded-sm`}
+                          >
+                            {isQuestion ? <span className="font-medium">{evidence}</span> : evidence}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <span className="ml-1">{insight.supporting_evidence || "없음"}</span>
@@ -177,33 +198,36 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
               {insights.detailed_responses.map((item, qIndex) => (
                 <div key={qIndex} className="border rounded-lg overflow-hidden">
                   <div className="bg-blue-50 p-4 border-b">
-                    <h4 className="font-medium text-blue-800">질문 {qIndex + 1}: {item.question_text}</h4>
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center mr-3">
+                        <span className="text-blue-800 font-medium">Q</span>
+                      </div>
+                      <h4 className="font-medium text-blue-800">
+                        {item.question_text}
+                      </h4>
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1 ml-11">
+                      질문 {qIndex + 1}
+                    </div>
                   </div>
                   <div className="divide-y">
                     {Array.isArray(item.responses) ? item.responses.map((response, rIndex) => {
                       // 다양한 응답 형식 처리
-                      let cloneName = `클론 ${rIndex + 1}`;
-                      let responseText = '';
-                      
-                      if (typeof response === 'string') {
-                        responseText = response;
-                      } else if (response && typeof response === 'object') {
-                        cloneName = response.clone_name || response.name || cloneName;
-                        responseText = response.response || response.text || JSON.stringify(response);
-                      }
+                      const { cloneName, responseText } = formatResponseData(response);
                       
                       return (
-                        <div key={rIndex} className="p-4 hover:bg-gray-50">
+                        <div key={rIndex} className="p-4 hover:bg-gray-50 transition-colors">
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-800">
-                              {cloneName.charAt(0)}
+                            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-sm font-medium text-blue-800 shadow-sm">
+                              {cloneName.charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <p className="font-medium">{cloneName}</p>
+                              <p className="text-xs text-gray-500">AI 응답자</p>
                             </div>
                           </div>
-                          <div className="pl-10">
-                            <p className="text-gray-700 whitespace-pre-wrap">{responseText}</p>
+                          <div className="pl-10 mt-2">
+                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{responseText}</p>
                           </div>
                         </div>
                       );
@@ -248,7 +272,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           </div>
         </CardContent>
       </Card>
-
 
       {/* 통계 정보 섹션 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -302,7 +325,7 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
               <p className="text-gray-800">
                 {selectedClones.length}명의 AI 클론
               </p>            
-              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
