@@ -153,27 +153,40 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                 <div className="text-xs text-gray-500">
                   <strong>관련 응답:</strong>
                   {Array.isArray(insight.supporting_evidence) ? (
-                  <div className="mt-1">
-                    {insight.supporting_evidence.map((evidence, i) => {
-                      // Make sure evidence is a string before calling startsWith()
-                      const evidenceStr = typeof evidence === 'string' ? evidence : JSON.stringify(evidence);
-                      // 질문과 응답 구분
-                      const isQuestion = evidenceStr.startsWith('질문:');
-                      return (
-                        <div 
-                          key={i} 
-                          className={`ml-2 pl-2 border-l-2 ${
-                            isQuestion ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
-                          } my-1 p-1 rounded-sm`}
-                        >
-                          {isQuestion ? <span className="font-medium">{evidenceStr}</span> : evidenceStr}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <span className="ml-1">{insight.supporting_evidence || "없음"}</span>
-                )}
+                    <div className="mt-1">
+                      {insight.supporting_evidence.map((evidence, i) => {
+                        // JSON 형식 파싱 처리
+                        let displayText = '';
+                        
+                        if (typeof evidence === 'string' && evidence.startsWith('{') && evidence.includes('clone_name')) {
+                          try {
+                            const parsed = JSON.parse(evidence);
+                            displayText = `${parsed.clone_name}: ${parsed.evidence}`;
+                          } catch {
+                            displayText = evidence;
+                          }
+                        } else if (typeof evidence === 'string') {
+                          displayText = evidence;
+                        } else {
+                          displayText = String(evidence);
+                        }
+                        
+                        const isQuestion = displayText.startsWith('질문:');
+                        return (
+                          <div 
+                            key={i} 
+                            className={`ml-2 pl-2 border-l-2 ${
+                              isQuestion ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                            } my-1 p-1 rounded-sm`}
+                          >
+                            {isQuestion ? <span className="font-medium">{displayText}</span> : displayText}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className="ml-1">{insight.supporting_evidence || "없음"}</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -195,10 +208,26 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* 디버깅용 정보 표시 */}
+          <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+            <details>
+              <summary className="cursor-pointer font-medium">응답 데이터 디버그 정보</summary>
+              <pre className="mt-2 overflow-auto max-h-40">
+                {JSON.stringify({
+                  hasResponses: Boolean(insights.detailed_responses),
+                  responsesCount: insights.detailed_responses?.length || 0,
+                  firstResponseSample: insights.detailed_responses?.[0]?.responses?.[0] || 'None'
+                }, null, 2)}
+              </pre>
+            </details>
+          </div>
+          
+          {/* 기존 표시 로직 */}
           {insights.detailed_responses && insights.detailed_responses.length > 0 ? (
             <div className="space-y-6">
               {insights.detailed_responses.map((item, qIndex) => (
                 <div key={qIndex} className="border rounded-lg overflow-hidden">
+                  {/* 질문 표시 부분은 동일하게 유지 */}
                   <div className="bg-blue-50 p-4 border-b">
                     <div className="flex items-center">
                       <div className="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center mr-3">
@@ -212,29 +241,53 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                       질문 {qIndex + 1}
                     </div>
                   </div>
+                  
+                  {/* 응답 표시 부분 개선 */}
                   <div className="divide-y">
-                    {Array.isArray(item.responses) ? item.responses.map((response, rIndex) => {
-                      // 다양한 응답 형식 처리
-                      const { cloneName, responseText } = formatResponseData(response);
-                      
-                      return (
-                        <div key={rIndex} className="p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-sm font-medium text-blue-800 shadow-sm">
-                              {cloneName.charAt(0).toUpperCase()}
+                    {Array.isArray(item.responses) && item.responses.length > 0 ? (
+                      item.responses.map((response, rIndex) => {
+                        // 응답 형식 처리 강화
+                        let cloneName = '클론';
+                        let responseText = '';
+                        
+                        if (typeof response === 'string') {
+                          // 응답이 문자열인 경우 (예상치 못한 형식)
+                          if (response.startsWith('{') && response.includes('clone_name')) {
+                            try {
+                              const parsed = JSON.parse(response);
+                              cloneName = parsed.clone_name || '클론';
+                              responseText = parsed.response || parsed.evidence || response;
+                            } catch {
+                              responseText = response;
+                            }
+                          } else {
+                            responseText = response;
+                          }
+                        } else if (response && typeof response === 'object') {
+                          // 객체인 경우 (정상적인 형식)
+                          cloneName = response.clone_name || response.name || '클론';
+                          responseText = response.response || response.text || response.evidence || JSON.stringify(response);
+                        }
+                        
+                        return (
+                          <div key={rIndex} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-sm font-medium text-blue-800 shadow-sm">
+                                {cloneName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium">{cloneName}</p>
+                                <p className="text-xs text-gray-500">AI 응답자</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">{cloneName}</p>
-                              <p className="text-xs text-gray-500">AI 응답자</p>
+                            <div className="pl-10 mt-2">
+                              <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{responseText}</p>
                             </div>
                           </div>
-                          <div className="pl-10 mt-2">
-                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{responseText}</p>
-                          </div>
-                        </div>
-                      );
-                    }) : (
-                      <div className="p-4 text-gray-500">응답 데이터 형식 오류</div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 text-gray-500">이 질문에 대한 응답이 없습니다.</div>
                     )}
                   </div>
                 </div>
@@ -247,6 +300,7 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           )}
         </CardContent>
       </Card>
+
       {/* 다음 스텝  */}
       <Card>
         <CardHeader>
