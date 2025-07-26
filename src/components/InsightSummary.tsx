@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Download, RefreshCw, AlertTriangle, BrainCircuit } from 'lucide-react';
 import { ResearchData, CloneProfile } from '@/types/research';
 import { insightsAPI } from '@/lib/api';
@@ -24,7 +23,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
   const [insights, setInsights] = useState<Insight | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rawData, setRawData] = useState<any>(null);
 
   useEffect(() => {
     if (researchId) {
@@ -34,7 +32,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           setError(null);
           const analysisResult = await insightsAPI.analyze(Number(researchId));
           setInsights(analysisResult);
-          setRawData(analysisResult); // 원본 데이터 저장 (디버깅용)
           console.log('Received insights data:', analysisResult);
         } catch (err) {
           setError('인사이트를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
@@ -60,10 +57,8 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
     }
   };
 
-  // 객체를 문자열로 변환하는 함수 (객체의 경우 JSON.stringify 대신 사용)
   const formatEvidence = (evidence: any): string => {
     if (typeof evidence === 'string') {
-      // JSON 문자열인 경우 파싱 시도
       if (evidence.startsWith('{') && evidence.includes('clone_name')) {
         try {
           const parsed = JSON.parse(evidence);
@@ -75,12 +70,21 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
       return evidence;
     } 
     else if (evidence && typeof evidence === 'object') {
-      // 객체인 경우 클론 이름과 증거 텍스트 추출
       const cloneName = evidence.clone_name || 'Unknown';
       const evidenceText = evidence.evidence || evidence.response || evidence.text || JSON.stringify(evidence);
       return `${cloneName}: ${evidenceText}`;
     }
     return String(evidence);
+  };
+
+  const cleanResponseText = (text: string): string => {
+    if (!text) return '';
+    const thinkTagEnd = '</think>';
+    const thinkTagIndex = text.indexOf(thinkTagEnd);
+    if (thinkTagIndex !== -1) {
+      return text.substring(thinkTagIndex + thinkTagEnd.length).trim();
+    }
+    return text.trim();
   };
 
   if (loading) {
@@ -130,31 +134,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
         </CardHeader>
       </Card>
 
-      {/* 디버그 카드 - 개발 후 제거 */}
-      <Card className="bg-gray-50 border-yellow-300">
-        <CardHeader>
-          <CardTitle>🐞 데이터 구조 디버그</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-xs space-y-2">
-            <div>
-              <strong>인사이트 개수:</strong> {insights.insights?.length || 0}
-            </div>
-            <div>
-              <strong>상세 응답 개수:</strong> {insights.detailed_responses?.length || 0}
-            </div>
-            <div className="mt-2">
-              <details>
-                <summary className="cursor-pointer">전체 데이터 구조 보기</summary>
-                <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto max-h-96">
-                  {JSON.stringify(rawData, null, 2)}
-                </pre>
-              </details>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 키 테마 섹션 추가 */}
       <Card>
         <CardHeader>
@@ -185,13 +164,11 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
               <div key={index} className="p-4 border rounded-lg bg-gray-50">
                 <h4 className="font-semibold text-base mb-2">{insight.title}</h4>
                 <p className="text-gray-700 text-sm mb-3">{insight.description}</p>
-                {/* 관련 응답 섹션 - 객체 처리 로직 개선 */}
                 <div className="text-xs text-gray-500">
                   <strong>관련 응답:</strong>
                   {Array.isArray(insight.supporting_evidence) ? (
                     <div className="mt-1">
                       {insight.supporting_evidence.map((evidence, i) => {
-                        // 객체 처리 로직 개선
                         const displayText = formatEvidence(evidence);
                         const isQuestion = typeof displayText === 'string' && displayText.startsWith('질문:');
                         
@@ -231,26 +208,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* 디버깅용 정보 표시 */}
-          <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            응답 데이터 상태: 
-            {!insights.detailed_responses ? '데이터 없음' : 
-             insights.detailed_responses.length === 0 ? '빈 배열' : 
-             `${insights.detailed_responses.length}개의 질문 응답 있음`}
-             
-            {insights.answers && (
-              <div className="mt-1">
-                <details>
-                  <summary className="cursor-pointer">Answers 필드 데이터 확인</summary>
-                  <pre className="mt-2 overflow-auto max-h-40 bg-gray-100 p-1 rounded">
-                    {JSON.stringify(insights.answers, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            )}
-          </div>
-          
-          {/* 응답 표시 로직 - answers 필드 대체 처리 추가 */}
           {insights.detailed_responses && insights.detailed_responses.length > 0 ? (
             <div className="space-y-6">
               {insights.detailed_responses.map((item, qIndex) => (
@@ -272,7 +229,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                   <div className="divide-y">
                     {Array.isArray(item.responses) && item.responses.length > 0 ? (
                       item.responses.map((response, rIndex) => {
-                        // 응답 처리 로직
                         let cloneName = '클론';
                         let responseText = '';
                         
@@ -293,6 +249,8 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                           responseText = response.response || response.text || response.evidence || JSON.stringify(response);
                         }
                         
+                        const cleanedResponseText = cleanResponseText(responseText);
+
                         return (
                           <div key={rIndex} className="p-4 hover:bg-gray-50 transition-colors">
                             <div className="flex items-center gap-2 mb-2">
@@ -305,7 +263,7 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                               </div>
                             </div>
                             <div className="pl-10 mt-2">
-                              <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{responseText}</p>
+                              <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{cleanedResponseText}</p>
                             </div>
                           </div>
                         );
@@ -318,7 +276,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
               ))}
             </div>
           ) : insights.answers && Object.keys(insights.answers).length > 0 ? (
-            // answers 필드 사용 (fallback)
             <div className="space-y-6">
               {Object.entries(insights.answers).map(([questionId, questionData]: [string, any], qIndex) => (
                 <div key={questionId} className="border rounded-lg overflow-hidden">
@@ -340,6 +297,7 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                     {Object.entries(questionData.responses).map(([cloneId, response]: [string, any], rIndex) => {
                       const cloneName = response.clone_name || `Clone ${cloneId}`;
                       const responseText = response.response || response.text || String(response);
+                      const cleanedResponseText = cleanResponseText(responseText);
                       
                       return (
                         <div key={rIndex} className="p-4 hover:bg-gray-50">
@@ -353,7 +311,7 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                             </div>
                           </div>
                           <div className="pl-10 mt-2">
-                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{responseText}</p>
+                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{cleanedResponseText}</p>
                           </div>
                         </div>
                       );
