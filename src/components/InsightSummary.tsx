@@ -134,17 +134,26 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* 방어적 프로그래밍: insights.insights가 없으면 빈 배열 사용 */}
             {(insights.insights || []).map((insight, index) => (
               <div key={index} className="p-4 border rounded-lg bg-gray-50">
                 <h4 className="font-semibold text-base mb-2">{insight.title}</h4>
                 <p className="text-gray-700 text-sm mb-3">{insight.description}</p>
                 <div className="text-xs text-gray-500">
-                  <strong>관련 응답:</strong> {(insight.supporting_evidence || []).join(', ')}
+                  <strong>관련 응답:</strong>
+                  {Array.isArray(insight.supporting_evidence) ? (
+                    <div className="mt-1">
+                      {insight.supporting_evidence.map((evidence, i) => (
+                        <div key={i} className="ml-2 pl-2 border-l-2 border-gray-200 my-1">
+                          {evidence}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="ml-1">{insight.supporting_evidence || "없음"}</span>
+                  )}
                 </div>
               </div>
             ))}
-            {/* insights.insights가 없거나 빈 배열인 경우 메시지 표시 */}
             {(!insights.insights || insights.insights.length === 0) && (
               <div className="p-4 border rounded-lg bg-gray-50 text-center">
                 <p className="text-gray-700">분석된 인사이트가 없습니다.</p>
@@ -171,21 +180,36 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                     <h4 className="font-medium text-blue-800">질문 {qIndex + 1}: {item.question_text}</h4>
                   </div>
                   <div className="divide-y">
-                    {item.responses.map((response, rIndex) => (
-                      <div key={rIndex} className="p-4 hover:bg-gray-50">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-800">
-                            {response.clone_name?.charAt(0) || 'C'}
+                    {Array.isArray(item.responses) ? item.responses.map((response, rIndex) => {
+                      // 다양한 응답 형식 처리
+                      let cloneName = `클론 ${rIndex + 1}`;
+                      let responseText = '';
+                      
+                      if (typeof response === 'string') {
+                        responseText = response;
+                      } else if (response && typeof response === 'object') {
+                        cloneName = response.clone_name || response.name || cloneName;
+                        responseText = response.response || response.text || JSON.stringify(response);
+                      }
+                      
+                      return (
+                        <div key={rIndex} className="p-4 hover:bg-gray-50">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-800">
+                              {cloneName.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-medium">{cloneName}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{response.clone_name || `클론 ${rIndex + 1}`}</p>
+                          <div className="pl-10">
+                            <p className="text-gray-700 whitespace-pre-wrap">{responseText}</p>
                           </div>
                         </div>
-                        <div className="pl-10">
-                          <p className="text-gray-700 whitespace-pre-wrap">{response.response}</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    }) : (
+                      <div className="p-4 text-gray-500">응답 데이터 형식 오류</div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -197,7 +221,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           )}
         </CardContent>
       </Card>
-
       {/* 다음 스텝  */}
       <Card>
         <CardHeader>

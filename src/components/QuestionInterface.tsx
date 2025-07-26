@@ -416,7 +416,7 @@ const QuestionInterface: React.FC<QuestionInterfaceProps> = ({
         </div>
         
         <div className="mt-4 text-sm text-blue-600 bg-blue-100 p-3 rounded">
-          <p className="font-medium">💡 AI 처리 시간은 질문 복잡도, 클론 수 그리고 질문 수 따라 다를 수 있습니다.</p>
+          <p className="font-medium">💡 AI 처리 시간은 질문 복잡도, 클론 수 그리고 질문 수에 따라 다를 수 있습니다.</p>
           <p className="mt-1">평균 처리 시간: 3-5분</p>
         </div>
       </div>
