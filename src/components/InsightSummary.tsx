@@ -24,6 +24,7 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
   const [insights, setInsights] = useState<Insight | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rawData, setRawData] = useState<any>(null);
 
   useEffect(() => {
     if (researchId) {
@@ -33,6 +34,8 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
           setError(null);
           const analysisResult = await insightsAPI.analyze(Number(researchId));
           setInsights(analysisResult);
+          setRawData(analysisResult); // 원본 데이터 저장 (디버깅용)
+          console.log('Received insights data:', analysisResult);
         } catch (err) {
           setError('인사이트를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
           console.error(err);
@@ -57,19 +60,27 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
     }
   };
 
-  // 데이터 유효성 검사 및 안전한 처리를 위한 함수
-  const formatResponseData = (response: any) => {
-    let cloneName = '클론';
-    let responseText = '';
-    
-    if (typeof response === 'string') {
-      responseText = response;
-    } else if (response && typeof response === 'object') {
-      cloneName = response.clone_name || response.name || '클론';
-      responseText = response.response || response.text || JSON.stringify(response);
+  // 객체를 문자열로 변환하는 함수 (객체의 경우 JSON.stringify 대신 사용)
+  const formatEvidence = (evidence: any): string => {
+    if (typeof evidence === 'string') {
+      // JSON 문자열인 경우 파싱 시도
+      if (evidence.startsWith('{') && evidence.includes('clone_name')) {
+        try {
+          const parsed = JSON.parse(evidence);
+          return `${parsed.clone_name}: ${parsed.evidence}`;
+        } catch {
+          return evidence;
+        }
+      }
+      return evidence;
+    } 
+    else if (evidence && typeof evidence === 'object') {
+      // 객체인 경우 클론 이름과 증거 텍스트 추출
+      const cloneName = evidence.clone_name || 'Unknown';
+      const evidenceText = evidence.evidence || evidence.response || evidence.text || JSON.stringify(evidence);
+      return `${cloneName}: ${evidenceText}`;
     }
-    
-    return { cloneName, responseText };
+    return String(evidence);
   };
 
   if (loading) {
@@ -119,6 +130,31 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
         </CardHeader>
       </Card>
 
+      {/* 디버그 카드 - 개발 후 제거 */}
+      <Card className="bg-gray-50 border-yellow-300">
+        <CardHeader>
+          <CardTitle>🐞 데이터 구조 디버그</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xs space-y-2">
+            <div>
+              <strong>인사이트 개수:</strong> {insights.insights?.length || 0}
+            </div>
+            <div>
+              <strong>상세 응답 개수:</strong> {insights.detailed_responses?.length || 0}
+            </div>
+            <div className="mt-2">
+              <details>
+                <summary className="cursor-pointer">전체 데이터 구조 보기</summary>
+                <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto max-h-96">
+                  {JSON.stringify(rawData, null, 2)}
+                </pre>
+              </details>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 키 테마 섹션 추가 */}
       <Card>
         <CardHeader>
@@ -149,29 +185,16 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
               <div key={index} className="p-4 border rounded-lg bg-gray-50">
                 <h4 className="font-semibold text-base mb-2">{insight.title}</h4>
                 <p className="text-gray-700 text-sm mb-3">{insight.description}</p>
-                {/* 관련 응답 섹션 */}
+                {/* 관련 응답 섹션 - 객체 처리 로직 개선 */}
                 <div className="text-xs text-gray-500">
                   <strong>관련 응답:</strong>
                   {Array.isArray(insight.supporting_evidence) ? (
                     <div className="mt-1">
                       {insight.supporting_evidence.map((evidence, i) => {
-                        // JSON 형식 파싱 처리
-                        let displayText = '';
+                        // 객체 처리 로직 개선
+                        const displayText = formatEvidence(evidence);
+                        const isQuestion = typeof displayText === 'string' && displayText.startsWith('질문:');
                         
-                        if (typeof evidence === 'string' && evidence.startsWith('{') && evidence.includes('clone_name')) {
-                          try {
-                            const parsed = JSON.parse(evidence);
-                            displayText = `${parsed.clone_name}: ${parsed.evidence}`;
-                          } catch {
-                            displayText = evidence;
-                          }
-                        } else if (typeof evidence === 'string') {
-                          displayText = evidence;
-                        } else {
-                          displayText = String(evidence);
-                        }
-                        
-                        const isQuestion = displayText.startsWith('질문:');
                         return (
                           <div 
                             key={i} 
@@ -210,24 +233,28 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
         <CardContent>
           {/* 디버깅용 정보 표시 */}
           <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            <details>
-              <summary className="cursor-pointer font-medium">응답 데이터 디버그 정보</summary>
-              <pre className="mt-2 overflow-auto max-h-40">
-                {JSON.stringify({
-                  hasResponses: Boolean(insights.detailed_responses),
-                  responsesCount: insights.detailed_responses?.length || 0,
-                  firstResponseSample: insights.detailed_responses?.[0]?.responses?.[0] || 'None'
-                }, null, 2)}
-              </pre>
-            </details>
+            응답 데이터 상태: 
+            {!insights.detailed_responses ? '데이터 없음' : 
+             insights.detailed_responses.length === 0 ? '빈 배열' : 
+             `${insights.detailed_responses.length}개의 질문 응답 있음`}
+             
+            {insights.answers && (
+              <div className="mt-1">
+                <details>
+                  <summary className="cursor-pointer">Answers 필드 데이터 확인</summary>
+                  <pre className="mt-2 overflow-auto max-h-40 bg-gray-100 p-1 rounded">
+                    {JSON.stringify(insights.answers, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
           </div>
           
-          {/* 기존 표시 로직 */}
+          {/* 응답 표시 로직 - answers 필드 대체 처리 추가 */}
           {insights.detailed_responses && insights.detailed_responses.length > 0 ? (
             <div className="space-y-6">
               {insights.detailed_responses.map((item, qIndex) => (
                 <div key={qIndex} className="border rounded-lg overflow-hidden">
-                  {/* 질문 표시 부분은 동일하게 유지 */}
                   <div className="bg-blue-50 p-4 border-b">
                     <div className="flex items-center">
                       <div className="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center mr-3">
@@ -242,16 +269,14 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                     </div>
                   </div>
                   
-                  {/* 응답 표시 부분 개선 */}
                   <div className="divide-y">
                     {Array.isArray(item.responses) && item.responses.length > 0 ? (
                       item.responses.map((response, rIndex) => {
-                        // 응답 형식 처리 강화
+                        // 응답 처리 로직
                         let cloneName = '클론';
                         let responseText = '';
                         
                         if (typeof response === 'string') {
-                          // 응답이 문자열인 경우 (예상치 못한 형식)
                           if (response.startsWith('{') && response.includes('clone_name')) {
                             try {
                               const parsed = JSON.parse(response);
@@ -264,7 +289,6 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                             responseText = response;
                           }
                         } else if (response && typeof response === 'object') {
-                          // 객체인 경우 (정상적인 형식)
                           cloneName = response.clone_name || response.name || '클론';
                           responseText = response.response || response.text || response.evidence || JSON.stringify(response);
                         }
@@ -293,9 +317,57 @@ const InsightSummary: React.FC<InsightSummaryProps> = ({
                 </div>
               ))}
             </div>
+          ) : insights.answers && Object.keys(insights.answers).length > 0 ? (
+            // answers 필드 사용 (fallback)
+            <div className="space-y-6">
+              {Object.entries(insights.answers).map(([questionId, questionData]: [string, any], qIndex) => (
+                <div key={questionId} className="border rounded-lg overflow-hidden">
+                  <div className="bg-blue-50 p-4 border-b">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center mr-3">
+                        <span className="text-blue-800 font-medium">Q</span>
+                      </div>
+                      <h4 className="font-medium text-blue-800">
+                        {questionData.question_text}
+                      </h4>
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1 ml-11">
+                      질문 {qIndex + 1}
+                    </div>
+                  </div>
+                  
+                  <div className="divide-y">
+                    {Object.entries(questionData.responses).map(([cloneId, response]: [string, any], rIndex) => {
+                      const cloneName = response.clone_name || `Clone ${cloneId}`;
+                      const responseText = response.response || response.text || String(response);
+                      
+                      return (
+                        <div key={rIndex} className="p-4 hover:bg-gray-50">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-800">
+                              {cloneName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium">{cloneName}</p>
+                              <p className="text-xs text-gray-500">AI 응답자</p>
+                            </div>
+                          </div>
+                          <div className="pl-10 mt-2">
+                            <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-md border border-gray-100">{responseText}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="text-center p-4 text-gray-500">
-              자세한 응답 데이터가 없습니다.
+            <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-gray-600 mb-2">자세한 응답 데이터가 없습니다.</p>
+              <p className="text-xs text-gray-500">
+                백엔드에서 'detailed_responses' 또는 'answers' 필드가 올바르게 구성되어 있는지 확인하세요.
+              </p>
             </div>
           )}
         </CardContent>

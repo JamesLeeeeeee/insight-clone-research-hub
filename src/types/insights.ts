@@ -7,7 +7,8 @@ export interface Insight {
   insights: Array<{
     title: string;
     description: string;
-    supporting_evidence: string[];
+    // supporting_evidence가 문자열 또는 객체를 포함할 수 있도록 수정
+    supporting_evidence: Array<string | { clone_name: string; evidence: string }>;
   }>;
   recommendations: Array<{
     action: string;
@@ -16,12 +17,13 @@ export interface Insight {
   // 상세 응답 데이터 구조 수정
   detailed_responses: Array<{
       question_text: string;
-      responses: Array<{
+      // responses가 문자열 또는 객체를 포함할 수 있도록 수정
+      responses: Array<string | {
           clone_name: string;
-          response: string;  // changed from 'answer' to 'response'
-          // 추가 가능한 대체 필드들
+          response: string;
           text?: string;
           name?: string;
+          evidence?: string;
       }>
   }>;
   saved_insights: any[]; // 필요시 더 구체적인 타입으로 변경
